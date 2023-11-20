@@ -126,31 +126,26 @@ class PySOMPlot:
         return relative_results
 
     def _process_relative_data_with_invocation(self):
+        results = {}
         relative_series = self._get_relative_data_series()
 
-        self.results_with_invocations = {}
-
         for i in range(1, int(self.max_invocation) + 1):
-            self.results_with_invocations[i] = {}
+            results[i] = {}
             for executor in self.executors:
-                self.results_with_invocations[i][executor] = {}
+                results[i][executor] = {}
                 for benchmark in self.benchmarks:
-                    self.results_with_invocations[i][executor][benchmark] = []
+                    results[i][executor][benchmark] = []
 
         for executor in self.executors:
             for benchmark in self.benchmarks:
                 data_series_with_invokes = relative_series[executor][benchmark]
                 for i in range(1, int(self.max_invocation) + 1):
                     data_series = data_series_with_invokes[i]
-                    self.results_with_invocations[i][executor][benchmark].append(
-                        data_series
-                    )
+                    results[i][executor][benchmark] = data_series
 
-        return True
+        return results
 
     def _process_data_with_invocation(self):
-        relative_series = self._get_relative_data_series()
-
         self.results_with_invocations = {}
 
         for i in range(1, int(self.max_invocation) + 1):
@@ -184,8 +179,45 @@ class PySOMPlot:
             vs.append(var)
         return gmeans, vs
 
+    def plot_boxes(self):
+        output = self.basename.removesuffix(".data")
+        data = self._process_relative_data_with_invocation()
+
+        style.use("seaborn-v0_8-darkgrid")
+        figs = []
+
+        for invocation in range(1, int(self.max_invocation) + 1):
+            for executor in self.executors:
+                globals()["results_{}".format(executor.replace("-", "_"))] = data[
+                    invocation
+                ][executor]
+
+            ys = []
+            gmeans = []
+            for i, benchmark in enumerate(self.benchmarks):
+                y = results_RPySOM_bc_jit_tier1[benchmark]
+                ys.append(y)
+                gmean = geometric_mean(y)
+                gmeans.append(gmean)
+
+            ys = ys + [geometric_mean(gmeans)]
+
+            fig, ax = plt.subplots(figsize=(8, 6))
+            ax.boxplot(ys, labels=self.benchmarks + ["geo_mean"])
+            ax.set_ylim([0.675, 1.15])
+            plt.xticks(rotation=90)
+            plt.suptitle("invocation = {}".format(invocation))
+            plt.tight_layout()
+            figs.append(fig)
+
+        pdf = backend_pdf.PdfPages(output + "_box_per_invoke.pdf")
+        for fig in figs:
+            pdf.savefig(fig)
+        pdf.close()
+
     def plot_line_per_invocation(self):
-        output = self.basename
+        output = self.basename.removesuffix(".data")
+
         self._process_data_with_invocation()
 
         style.use("seaborn-v0_8-darkgrid")
@@ -305,4 +337,5 @@ if __name__ == "__main__":
     pysom_plot = PySOMPlot(filename)
 
     # pysom_plot.plot_line()
-    pysom_plot.plot_line_per_invocation()
+    # pysom_plot.plot_line_per_invocation()
+    pysom_plot.plot_boxes()
