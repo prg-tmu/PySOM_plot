@@ -39,7 +39,6 @@ class PySOMPlot:
         except IOError:
             raise Exception("not found", filename)
 
-
         while True:
             line = f.readline().rstrip()
             if line.startswith("#"):
@@ -87,13 +86,10 @@ class PySOMPlot:
                 if not is_existed:
                     self.results[executor][benchmark].append({invocation: [elapsed]})
 
-
-
         self.benchmarks.sort()
         self.executors.sort()
 
-
-    def _get_medians_baseline(self, baseline='interp'):
+    def _get_medians_baseline(self, baseline="interp"):
         key = None
         for executor in self.executors:
             if baseline in executor:
@@ -110,8 +106,7 @@ class PySOMPlot:
                 medians[benchmark] = np.median(arr)
         return medians
 
-
-    def _get_relative_data_series(self, baseline='interp'):
+    def _get_relative_data_series(self, baseline="interp"):
         medians_baseline = self._get_medians_baseline()
 
         relative_results = {}
@@ -130,7 +125,6 @@ class PySOMPlot:
 
         return relative_results
 
-
     def _process_relative_data_with_invocation(self):
         relative_series = self._get_relative_data_series()
 
@@ -148,7 +142,9 @@ class PySOMPlot:
                 data_series_with_invokes = relative_series[executor][benchmark]
                 for i in range(1, int(self.max_invocation) + 1):
                     data_series = data_series_with_invokes[i]
-                    self.results_with_invocations[i][executor][benchmark].append(data_series)
+                    self.results_with_invocations[i][executor][benchmark].append(
+                        data_series
+                    )
 
         return True
 
@@ -167,11 +163,12 @@ class PySOMPlot:
         for executor in self.executors:
             for benchmark in self.benchmarks:
                 for i, data in enumerate(self.results[executor][benchmark]):
-                    data_series = data[i+1]
-                    self.results_with_invocations[i+1][executor][benchmark] = data_series
+                    data_series = data[i + 1]
+                    self.results_with_invocations[i + 1][executor][
+                        benchmark
+                    ] = data_series
 
         return True
-
 
     def _statistics_per_iter(self, series_lists, length_of_element):
         gmeans = []
@@ -181,12 +178,11 @@ class PySOMPlot:
             for series in series_lists:
                 y.append(series[i])
 
-            gmean = median(y) # geometric_mean(y)
+            gmean = median(y)  # geometric_mean(y)
             var = variance(y)
             gmeans.append(gmean)
             vs.append(var)
         return gmeans, vs
-
 
     def plot_line_per_invocation(self):
         output = self.basename
@@ -199,16 +195,28 @@ class PySOMPlot:
         for invocation in range(1, int(self.max_invocation) + 1):
             data = self.results_with_invocations[invocation]
             for executor in self.executors:
-                globals()["results_{}".format(executor.replace("-", "_"))] = data[executor]
+                globals()["results_{}".format(executor.replace("-", "_"))] = data[
+                    executor
+                ]
 
-            fig = plt.figure(figsize=(12,20), tight_layout=True)
+            fig = plt.figure(figsize=(12, 20), tight_layout=True)
 
             for i, benchmark in enumerate(self.benchmarks):
                 plt.subplot(len(self.benchmarks) // 2, 2, i + 1)
 
                 x = [i + 1 for i in range(100)]
-                plt.plot(x, list(results_RPySOM_bc_jit_tier1[benchmark]), "b-", label="threaded code")
-                plt.plot(x, list(results_RPySOM_bc_interp[benchmark]), "r-", label="interpreter")
+                plt.plot(
+                    x,
+                    list(results_RPySOM_bc_jit_tier1[benchmark]),
+                    "b-",
+                    label="threaded code",
+                )
+                plt.plot(
+                    x,
+                    list(results_RPySOM_bc_interp[benchmark]),
+                    "r-",
+                    label="interpreter",
+                )
                 plt.title(benchmark)
                 plt.ylabel("ms")
 
@@ -225,9 +233,7 @@ class PySOMPlot:
             pdf.savefig(fig)
         pdf.close()
 
-
     def plot_line(self):
-
         d_gmean = {}
         d_var = {}
 
@@ -247,17 +253,20 @@ class PySOMPlot:
         cols = 4
 
         for executor in self.executors:
-            globals()["results_gmean_{}".format(executor.replace('-', '_'))] = d_gmean[executor]
-            globals()["results_vars_{}".format(executor.replace('-', '_'))] = d_var[executor]
+            globals()["results_gmean_{}".format(executor.replace("-", "_"))] = d_gmean[
+                executor
+            ]
+            globals()["results_vars_{}".format(executor.replace("-", "_"))] = d_var[
+                executor
+            ]
 
         # print(results_gmean_RPySOM_bc_jit_tier1)
         # print(results_gmean_RPySOM_bc_interp)
 
         style.use("seaborn-v0_8-darkgrid")
-        fig = plt.figure(figsize=(12,28))
+        fig = plt.figure(figsize=(12, 28))
 
         for i, benchmark in enumerate(self.benchmarks):
-
             plt.subplot(len(self.benchmarks) // 2, 2, i + 1)
 
             x = np.array([i for i in range(100)])
@@ -266,10 +275,18 @@ class PySOMPlot:
             y_interp = np.array(results_gmean_RPySOM_bc_interp[benchmark])
             y_err_interp = np.array(results_vars_RPySOM_bc_interp[benchmark])
 
-            plt.plot(x, y_tier1, 'b-', label="threaded code")
-            plt.fill_between(x, y_tier1 - y_err_tier1, y_tier1 + y_err_tier1, color='b', alpha=0.2)
-            plt.plot(x, y_interp, 'r-', label="interp")
-            plt.fill_between(x, y_interp - y_err_interp, y_interp + y_err_interp, color='r', alpha=0.2)
+            plt.plot(x, y_tier1, "b-", label="threaded code")
+            plt.fill_between(
+                x, y_tier1 - y_err_tier1, y_tier1 + y_err_tier1, color="b", alpha=0.2
+            )
+            plt.plot(x, y_interp, "r-", label="interp")
+            plt.fill_between(
+                x,
+                y_interp - y_err_interp,
+                y_interp + y_err_interp,
+                color="r",
+                alpha=0.2,
+            )
 
             plt.xlabel("#iteration")
             plt.ylabel("ms")
@@ -278,6 +295,7 @@ class PySOMPlot:
         plt.legend(["threaded code", "interpreter"])
         plt.tight_layout()
         plt.show()
+
 
 if __name__ == "__main__":
     try:
