@@ -27,6 +27,7 @@ class PySOMPlot:
         self.resulsts_tier2 = None
 
         self.max_invocation = 0
+        self.max_iteration = 0
 
         self.benchmarks = []
         self.executors = []
@@ -72,6 +73,9 @@ class PySOMPlot:
 
             if invocation > self.max_invocation:
                 self.max_invocation = invocation
+
+            if iteration > self.max_iteration:
+                self.max_iteration = iteration
 
             if not self.results[executor][benchmark]:
                 self.results[executor][benchmark] = [{invocation: [elapsed]}]
@@ -205,6 +209,7 @@ class PySOMPlot:
             fig, ax = plt.subplots(figsize=(8, 6))
             ax.boxplot(ys, labels=self.benchmarks + ["geo_mean"])
             ax.set_ylim([0.675, 1.15])
+            ax.set_ylabel("norm. to interp's median")
             plt.xticks(rotation=90)
             plt.suptitle("invocation = {}".format(invocation))
             plt.tight_layout()
@@ -236,7 +241,7 @@ class PySOMPlot:
             for i, benchmark in enumerate(self.benchmarks):
                 plt.subplot(len(self.benchmarks) // 2, 2, i + 1)
 
-                x = [i + 1 for i in range(100)]
+                x = [i + 1 for i in range(self.max_iteration)]
                 plt.plot(
                     x,
                     list(results_RPySOM_bc_jit_tier1[benchmark]),
@@ -277,7 +282,7 @@ class PySOMPlot:
                 data = []
                 for i, series in enumerate(data_series_with_invokes):
                     data.append(series[i + 1])
-                (gmeans, var) = self._statistics_per_iter(data, 100)
+                (gmeans, var) = self._statistics_per_iter(data, self.max_iteration)
                 d_gmean[executor][benchmark] = gmeans
                 d_var[executor][benchmark] = var
 
@@ -328,6 +333,47 @@ class PySOMPlot:
         plt.tight_layout()
         plt.show()
 
+    def plot_line_with_invocation(self):
+        output = self.basename.removesuffix(".data")
+        executor_var_names = []
+        for executor in self.executors:
+            executor_var_name = executor.replace("-", "_")
+            executor_var_names.append(executor_var_name)
+            globals()["results_{}".format(executor_var_name)] = self.results[executor]
+
+        figs = []
+
+        style.use("seaborn-v0_8-darkgrid")
+        bbox = (0, -0.15)
+
+        label = []
+        for i in range(1, int(self.max_invocation) + 1):
+            label.append("invocation {}".format(i))
+
+        for executor_var_name in executor_var_names:
+            fig = plt.figure(figsize=(12,24))
+            for i, benchmark in enumerate(self.benchmarks):
+                # results_tier1 = results_RPySOM_bc_jit_tier1[benchmark]
+                results = globals()["results_{}".format(executor_var_name)][benchmark]
+                plt.subplot(len(self.benchmarks) // 2, 2, i + 1)
+                plt.title(benchmark)
+                for j, data_with_invokes in enumerate(results):
+                    l = "invocation {}".format(j + 1)
+                    plt.plot(data_with_invokes[j+1], label=l)
+                    plt.ylabel("ms")
+                    plt.xlabel("#iteration")
+
+            plt.suptitle(executor_var_name)
+            plt.legend(label, bbox_to_anchor=bbox, loc="upper left", ncol=3)
+            plt.tight_layout()
+            figs.append(fig)
+
+        pdf = backend_pdf.PdfPages(output + "_with_invoke.pdf")
+        for fig in figs:
+            pdf.savefig(fig)
+        pdf.close()
+
+        plt.show()
 
 if __name__ == "__main__":
     try:
@@ -335,7 +381,4 @@ if __name__ == "__main__":
     except IndexError:
         raise Exception("argument is not specified")
     pysom_plot = PySOMPlot(filename)
-
-    # pysom_plot.plot_line()
-    # pysom_plot.plot_line_per_invocation()
-    pysom_plot.plot_boxes()
+    pysom_plot.plot_line_with_invocation()
