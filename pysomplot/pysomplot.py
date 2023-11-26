@@ -351,15 +351,15 @@ class PySOMPlot:
             label.append("invocation {}".format(i))
 
         for executor_var_name in executor_var_names:
-            fig = plt.figure(figsize=(12,24))
+            fig = plt.figure(figsize=(12, 24))
             for i, benchmark in enumerate(self.benchmarks):
                 # results_tier1 = results_RPySOM_bc_jit_tier1[benchmark]
                 results = globals()["results_{}".format(executor_var_name)][benchmark]
-                plt.subplot(len(self.benchmarks) // 2, 2, i + 1)
+                ax = plt.subplot(len(self.benchmarks) // 2, 2, i + 1)
                 plt.title(benchmark)
                 for j, data_with_invokes in enumerate(results):
                     l = "invocation {}".format(j + 1)
-                    plt.plot(data_with_invokes[j+1], label=l)
+                    plt.plot(data_with_invokes[j + 1], label=l)
                     plt.ylabel("ms")
                     plt.xlabel("#iteration")
 
@@ -374,6 +374,7 @@ class PySOMPlot:
         pdf.close()
 
         plt.show()
+
 
 if __name__ == "__main__":
     try:
