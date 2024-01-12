@@ -215,6 +215,7 @@ class PySOMPlot:
             plt.tight_layout()
             figs.append(fig)
 
+        plt.show()
         pdf = backend_pdf.PdfPages(output + "_box_per_invoke.pdf")
         for fig in figs:
             pdf.savefig(fig)
@@ -350,6 +351,8 @@ class PySOMPlot:
         for i in range(1, int(self.max_invocation) + 1):
             label.append("invocation {}".format(i))
 
+        result_median = {}
+
         for executor_var_name in executor_var_names:
             fig = plt.figure(figsize=(12, 24))
             for i, benchmark in enumerate(self.benchmarks):
@@ -357,8 +360,9 @@ class PySOMPlot:
                 results = globals()["results_{}".format(executor_var_name)][benchmark]
                 ax = plt.subplot(len(self.benchmarks) // 2, 2, i + 1)
                 plt.title(benchmark)
+
                 for j, data_with_invokes in enumerate(results):
-                    l = "invocation {}".format(j + 1)
+                    l = "invocation={}".format(j + 1)
                     plt.plot(data_with_invokes[j + 1], label=l)
                     plt.ylabel("ms")
                     plt.xlabel("#iteration")
@@ -383,3 +387,4 @@ if __name__ == "__main__":
         raise Exception("argument is not specified")
     pysom_plot = PySOMPlot(filename)
     pysom_plot.plot_line_with_invocation()
+    pysom_plot.plot_boxes()
