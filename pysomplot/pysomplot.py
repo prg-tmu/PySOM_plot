@@ -379,6 +379,22 @@ class PySOMPlot:
 
         plt.show()
 
+    def plot_invocations(self, experiment_name="Experiment2"):
+        output = self.basename.removesuffix(".data")
+        fig = plt.figure(figsize=(12, 24))
+
+        style.use("seaborn-v0_8-darkgrid")
+        bbox = (0, -0.15)
+
+        for i, executor in enumerate(self.executors):
+            r = self.results[executor][experiment_name]
+            l = [ x[i+1][0] for i, x in enumerate(r) ]
+            plt.plot(l)
+
+        plt.legend(self.executors)
+        plt.tight_layout()
+        plt.show()
+
 
 if __name__ == "__main__":
     try:
@@ -386,5 +402,6 @@ if __name__ == "__main__":
     except IndexError:
         raise Exception("argument is not specified")
     pysom_plot = PySOMPlot(filename)
-    pysom_plot.plot_line_with_invocation()
-    pysom_plot.plot_boxes()
+    # pysom_plot.plot_line_with_invocation()
+    # pysom_plot.plot_boxes()
+    pysom_plot.plot_invocations()
