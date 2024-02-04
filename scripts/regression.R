@@ -1,18 +1,18 @@
 #!/usr/bin/env Rscript
+library(ggplot2)
+library(dplyr)
+args <- commandArgs(trailingOnly = TRUE)
 
-args = commandArgs(trailingOnly = TRUE)
-
-if (length(args)==0) {
+if (length(args) == 0 || length(args) > 1) {
   stop("At least one argument must be supplied (input file).n", call.=FALSE)
-} else if (length(args)==1) {
-  # default output file
-  args[2] = "out.pdf"
 }
 
-library(ggplot2)
+file <- args[1]
+output <- gsub(".csv", ".pdf", basename(file))
 
-pdf(args[2])
-data <- read.table(args[1], head = TRUE, sep = ",")
+pdf(output)
+
+data <- read.table(file, head = TRUE, sep = ",")
 y <- data$count
 x <- data$rank
 # Perform power regression
