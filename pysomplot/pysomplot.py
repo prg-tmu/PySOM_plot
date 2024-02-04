@@ -404,6 +404,7 @@ class PySOMPlotExperiment:
         self.experiment_name = set()
         self.executor_names = set()
         self.max_trial = -1
+        self.geomeans_vars = {}
 
         filenames = glob.glob(self.dirname + "/*.data")
         for i, filename in enumerate(filenames):
@@ -443,6 +444,16 @@ class PySOMPlotExperiment:
 
                     globals()[exec_name][i+1].append(elapsed)
 
+        for executor in self.executor_names:
+            data = globals()[executor]
+            for i in range(self.max_trial):
+                l = data[i+1]
+                gmean = geometric_mean(l)
+                var = variance(l)
+                if executor not in self.geomeans_vars:
+                    self.geomeans_vars[executor] = []
+                self.geomeans_vars[executor].append((gmean, var))
+
     def plot_invocations_subplots(self):
         fig = plt.figure(figsize=(12,12), tight_layout=True)
         style.use("seaborn-v0_8-darkgrid")
@@ -452,9 +463,6 @@ class PySOMPlotExperiment:
             trials = set()
             for j in range(self.max_trial):
                 l = data[j+1]
-                gmean = geometric_mean(l)
-                var = variance(l)
-                # print(executor, i+1, gmean, var)
                 ax.plot(l, label=executor)
                 ax.set_xlabel("Invocations")
                 ax.set_ylabel("Elapsed time (ms)")
@@ -463,9 +471,37 @@ class PySOMPlotExperiment:
 
                 trials.add(j+1)
 
-            ax.legend(trials, loc='best', ncol=5)
+            # ax.legend(trials, loc='best', ncol=5)
 
         plt.savefig(self.dirname + "/invocations.pdf")
+        plt.show()
+
+    def plot_average(self):
+        fig = plt.figure(figsize=(12,12), tight_layout=True)
+        style.use("seaborn-v0_8-darkgrid")
+        pallets = ['b', 'g', 'r', 'c']
+        for i, executor in enumerate(self.executor_names):
+            ax = fig.add_subplot(2, 2, i+1)
+            data = self.geomeans_vars[executor]
+            gmeans = []
+            variances = []
+            for j in range(self.max_trial):
+                gmean, var = data[j]
+                gmeans.append(gmean)
+                variances.append(var)
+            x = [x+1 for x in range(self.max_trial)]
+            c = pallets[i]
+            ax.plot(x, gmeans, color=c)
+            ax.errorbar(x, gmeans, variances, fmt='-^', elinewidth=1.5, capsize=5, clip_on=False, color=c)
+            ax.set_ylim((340, 470))
+            ax.set_title(executor)
+
+            gmean_all = geometric_mean(gmeans)
+            var_all = geometric_mean(variances)
+            print(executor, gmean_all, var_all)
+
+
+        plt.savefig(self.dirname + "/gmean_w_var.pdf")
         plt.show()
 
 if __name__ == "__main__":
@@ -479,3 +515,4 @@ if __name__ == "__main__":
     # pysom_plot.plot_invocations()
     pysom_plot_exp = PySOMPlotExperiment(arg1)
     pysom_plot_exp.plot_invocations_subplots()
+    pysom_plot_exp.plot_average()
