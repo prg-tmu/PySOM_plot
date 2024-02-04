@@ -1,3 +1,4 @@
+import glob
 import os
 import sys
 import math
@@ -379,9 +380,9 @@ class PySOMPlot:
 
         plt.show()
 
-    def plot_invocations(self, experiment_name="Experiment2"):
+    def plot_invocations(self, experiment_name="Experiment4"):
         output = self.basename.removesuffix(".data")
-        fig = plt.figure(figsize=(12, 24))
+        fig = plt.figure(figsize=(9, 6))
 
         style.use("seaborn-v0_8-darkgrid")
         bbox = (0, -0.15)
@@ -393,15 +394,88 @@ class PySOMPlot:
 
         plt.legend(self.executors)
         plt.tight_layout()
+        plt.savefig(output + ".pdf")
         plt.show()
 
 
+class PySOMPlotExperiment:
+    def __init__(self, dirname):
+        self.dirname = dirname
+        self.experiment_name = set()
+        self.executor_names = set()
+        self.max_trial = -1
+
+        filenames = glob.glob(self.dirname + "/*.data")
+        for i, filename in enumerate(filenames):
+            with open(filename) as f:
+                while True:
+                    line = f.readline()
+
+                    if line.startswith("#"):
+                        continue
+
+                    if len(line) == 0:
+                        break
+
+                    line = line.split("\t")
+                    try:
+                        invocation, iteration, elapsed, benchmark, executor = (
+                            float(line[0]),
+                            float(line[1]),
+                            float(line[2]),
+                            line[5],
+                            line[6],
+                        )
+                    except Exception:
+                        continue
+
+                    self.experiment_name.add(benchmark)
+                    self.max_trial = i+1 if i+1 > self.max_trial else self.max_trial
+
+                    exec_name = executor + "-exp"
+                    self.executor_names.add(exec_name)
+
+                    if exec_name not in globals():
+                        globals()[exec_name] = {}
+
+                    if i+1 not in globals()[exec_name]:
+                        globals()[exec_name][i+1] = []
+
+                    globals()[exec_name][i+1].append(elapsed)
+
+    def plot_invocations_subplots(self):
+        fig = plt.figure(figsize=(12,12), tight_layout=True)
+        style.use("seaborn-v0_8-darkgrid")
+        for i, executor in enumerate(self.executor_names):
+            ax = fig.add_subplot(2, 2, i+1)
+            data = globals()[executor]
+            trials = set()
+            for j in range(self.max_trial):
+                l = data[j+1]
+                gmean = geometric_mean(l)
+                var = variance(l)
+                # print(executor, i+1, gmean, var)
+                ax.plot(l, label=executor)
+                ax.set_xlabel("Invocations")
+                ax.set_ylabel("Elapsed time (ms)")
+                ax.set_title(executor)
+                ax.set_ylim((330, 495))
+
+                trials.add(j+1)
+
+            ax.legend(trials, loc='best', ncol=5)
+
+        plt.savefig(self.dirname + "/invocations.pdf")
+        plt.show()
+
 if __name__ == "__main__":
     try:
-        filename = sys.argv[1]
+        arg1 = sys.argv[1]
     except IndexError:
         raise Exception("argument is not specified")
-    pysom_plot = PySOMPlot(filename)
+    # pysom_plot = PySOMPlot(arg1)
     # pysom_plot.plot_line_with_invocation()
     # pysom_plot.plot_boxes()
-    pysom_plot.plot_invocations()
+    # pysom_plot.plot_invocations()
+    pysom_plot_exp = PySOMPlotExperiment(arg1)
+    pysom_plot_exp.plot_invocations_subplots()
