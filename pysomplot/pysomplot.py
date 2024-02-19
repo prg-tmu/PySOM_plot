@@ -465,7 +465,7 @@ class PySOMPlotExperiment:
                 self.medians[executor].append(med)
 
     def plot_invocations_subplots(self):
-        fig = plt.figure(figsize=(12,12), tight_layout=True)
+        fig = plt.figure(figsize=(10,10), tight_layout=True)
         style.use("seaborn-v0_8-darkgrid")
         for i, executor in enumerate(self.executor_names):
             ax = fig.add_subplot(2, 2, i+1)
@@ -487,7 +487,7 @@ class PySOMPlotExperiment:
         plt.show()
 
     def plot_average(self):
-        fig = plt.figure(figsize=(12,12), tight_layout=True)
+        fig = plt.figure(figsize=(8,8), tight_layout=True)
         style.use("seaborn-v0_8-darkgrid")
         pallets = ['b', 'g', 'r', 'c']
         for i, executor in enumerate(self.executor_names):
@@ -499,6 +499,7 @@ class PySOMPlotExperiment:
             y2s = [x - y for x, y in zip(self.geomeans[executor], self.variances[executor])]
             plt.fill_between(x, y1s, y2s, alpha=0.15, color=c)
 
+        plt.xlabel("#Trial")
         plt.legend()
         plt.savefig(self.dirname + "/gmean_w_var.pdf")
         plt.show()
