@@ -3,6 +3,7 @@ import os
 import sys
 import math
 from statistics import geometric_mean, variance, median
+from argparse import ArgumentParser
 
 import pandas as pd
 import numpy as np
@@ -405,6 +406,9 @@ class PySOMPlotExperiment:
         self.executor_names = set()
         self.max_trial = -1
         self.geomeans_vars = {}
+        self.geomeans = {}
+        self.variances = {}
+        self.medians = {}
 
         filenames = glob.glob(self.dirname + "/*.data")
         for i, filename in enumerate(filenames):
@@ -450,9 +454,15 @@ class PySOMPlotExperiment:
                 l = data[i+1]
                 gmean = geometric_mean(l)
                 var = variance(l)
+                med = median(l)
                 if executor not in self.geomeans_vars:
                     self.geomeans_vars[executor] = []
-                self.geomeans_vars[executor].append((gmean, var))
+                    self.geomeans[executor] = []
+                    self.variances[executor] = []
+                    self.medians[executor] = []
+                self.geomeans[executor].append(gmean)
+                self.variances[executor].append(var)
+                self.medians[executor].append(med)
 
     def plot_invocations_subplots(self):
         fig = plt.figure(figsize=(12,12), tight_layout=True)
@@ -460,17 +470,17 @@ class PySOMPlotExperiment:
         for i, executor in enumerate(self.executor_names):
             ax = fig.add_subplot(2, 2, i+1)
             data = globals()[executor]
+
             trials = set()
             for j in range(self.max_trial):
                 l = data[j+1]
-                ax.plot(l, label=executor)
+                ax.plot(l)
                 ax.set_xlabel("Invocations")
                 ax.set_ylabel("Elapsed time (ms)")
                 ax.set_title(executor)
-                ax.set_ylim((330, 495))
+                ax.set_ylim((320, 750))
 
                 trials.add(j+1)
-
             # ax.legend(trials, loc='best', ncol=5)
 
         plt.savefig(self.dirname + "/invocations.pdf")
@@ -481,38 +491,35 @@ class PySOMPlotExperiment:
         style.use("seaborn-v0_8-darkgrid")
         pallets = ['b', 'g', 'r', 'c']
         for i, executor in enumerate(self.executor_names):
-            ax = fig.add_subplot(2, 2, i+1)
-            data = self.geomeans_vars[executor]
-            gmeans = []
-            variances = []
-            for j in range(self.max_trial):
-                gmean, var = data[j]
-                gmeans.append(gmean)
-                variances.append(var)
-            x = [x+1 for x in range(self.max_trial)]
+            # ax = fig.add_subplot(2, 2, i+1)
+            x = [x for x in range(self.max_trial)]
             c = pallets[i]
-            ax.plot(x, gmeans, color=c)
-            ax.errorbar(x, gmeans, variances, fmt='-^', elinewidth=1.5, capsize=5, clip_on=False, color=c)
-            ax.set_ylim((340, 470))
-            ax.set_title(executor)
+            plt.plot(self.geomeans[executor], '--bo', color=c, label=executor)
+            y1s = [x + y for x, y in zip(self.geomeans[executor], self.variances[executor])]
+            y2s = [x - y for x, y in zip(self.geomeans[executor], self.variances[executor])]
+            plt.fill_between(x, y1s, y2s, alpha=0.15, color=c)
 
-            gmean_all = geometric_mean(gmeans)
-            var_all = geometric_mean(variances)
-            print(executor, gmean_all, var_all)
-
-
+        plt.legend()
         plt.savefig(self.dirname + "/gmean_w_var.pdf")
         plt.show()
 
 if __name__ == "__main__":
-    try:
-        arg1 = sys.argv[1]
-    except IndexError:
-        raise Exception("argument is not specified")
-    # pysom_plot = PySOMPlot(arg1)
-    # pysom_plot.plot_line_with_invocation()
-    # pysom_plot.plot_boxes()
-    # pysom_plot.plot_invocations()
-    pysom_plot_exp = PySOMPlotExperiment(arg1)
-    pysom_plot_exp.plot_invocations_subplots()
-    pysom_plot_exp.plot_average()
+    parser = ArgumentParser(description="A plotting script for PySOM")
+    parser.add_argument('--peak', action='store_true',
+                        help='Plot the peak performance of threaded code')
+    parser.add_argument('--exp', action='store_true',
+                        help='Plot expriment of hybrid compilation')
+    parser.add_argument('target',
+                        help='Target dir/file that contain(s) data produced from ReBench')
+    args = parser.parse_args()
+    target = args.target
+    if args.peak:
+        assert os.path.isfile(target), "Add path to file"
+        pysom_plot = PySOMPlot(target)
+        pysom_plot.plot_line_with_invocation()
+        pysom_plot.plot_boxes()
+    elif args.exp:
+        assert os.path.isdir(target), "Add path to dir"
+        pysom_plot_exp = PySOMPlotExperiment(target)
+        pysom_plot_exp.plot_invocations_subplots()
+        pysom_plot_exp.plot_average()
