@@ -159,14 +159,12 @@ class PySOMPlotGC:
                 xlabel="Benchmarks",
                 ylabel="GC minor (us)"
             )
-            ax.axhline(y=1, color='green', linewidth=2)
             plt.savefig('gc_minor.pdf', bbox_inches='tight')
 
             ax = df_major.plot.bar(
                 xlabel="Benchmarks",
                 ylabel="GC major (us)",
             )
-            ax.axhline(y=1, color='green', linewidth=2)
             plt.savefig('gc_major.pdf', bbox_inches='tight')
 
         plt.show()
