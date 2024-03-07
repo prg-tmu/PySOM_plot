@@ -58,7 +58,10 @@ class PySOMPlotGC:
 
                 self.data[exe][name][int(inv)] = gc_info
 
-        # pprint(self.data)
+    def _savefig(self, name, **kwargs):
+        if not os.path.isdir('output'):
+            os.mkdir('output')
+        plt.savefig(name, **kwargs)
 
     def _read_file(self, fpath):
         with open(fpath, "r") as f:
@@ -142,30 +145,30 @@ class PySOMPlotGC:
 
             ax = df_minor.plot.bar(
                 xlabel="Benchmarks",
-                ylabel="GC minor standardized\nto interpreter (lower is better)",
+                ylabel="GC minor time\nstandardized to interpreter (lower is better)",
             )
             ax.axhline(y=1, color='green', linewidth=2)
-            plt.savefig('gc_dtandardized.pdf', bbox_inches='tight')
+            self._savefig('gc_minor_standardized.pdf', bbox_inches='tight')
 
             ax = df_major.plot.bar(
                 xlabel="Benchmarks",
-                ylabel="GC major standardized\nto interpreter (lower is better)",
+                ylabel="GC major time\nstandardizedto interpreter (lower is better)",
             )
             ax.axhline(y=1, color='green', linewidth=2)
-            plt.savefig('gc_major_standardized.pdf', bbox_inches='tight')
+            self._savefig('gc_major_standardized.pdf', bbox_inches='tight')
 
         else:
             ax = df_minor.plot.bar(
                 xlabel="Benchmarks",
                 ylabel="GC minor (us)"
             )
-            plt.savefig('gc_minor.pdf', bbox_inches='tight')
+            self._savefig('gc_minor.pdf', bbox_inches='tight')
 
             ax = df_major.plot.bar(
                 xlabel="Benchmarks",
                 ylabel="GC major (us)",
             )
-            plt.savefig('gc_major.pdf', bbox_inches='tight')
+            self._savefig('gc_major.pdf', bbox_inches='tight')
 
         plt.show()
 
