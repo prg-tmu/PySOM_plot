@@ -1,11 +1,14 @@
 import os
 import sys
 import pathlib
+
 import pandas as pd
+import matplotlib.style as style
 import matplotlib.pyplot as plt
 
-from statistics import geometric_mean, variance
+from argparse import ArgumentParser
 from pprint import pprint
+from statistics import geometric_mean, variance
 
 
 class GcInfo:
@@ -27,7 +30,9 @@ class GcInfo:
 
 
 class PySOMPlotGC:
-    def __init__(self, path):
+    def __init__(self, path, standardize):
+        self.standardize = standardize
+
         if os.path.exists(path) and os.path.isdir(path):
             self.path = path
         else:
@@ -87,6 +92,8 @@ class PySOMPlotGC:
             )
 
     def plot(self):
+        style.use("seaborn-v0_8-darkgrid")
+
         benchmarks = self.data.keys()
         executables = ["interp", "threaded", "tracing"]
 
@@ -121,31 +128,57 @@ class PySOMPlotGC:
         df_minor = pd.DataFrame(minor)
         df_major = pd.DataFrame(major)
 
-        df_minor["threaded"] = df_minor["threaded"] / df_minor["interp"]
-        df_minor["tracing"] = df_minor["tracing"] / df_minor["interp"]
-        df_minor["interp"] = df_minor["interp"] / df_minor["interp"]
+        if self.standardize:
+            df_minor["threaded"] = df_minor["threaded"] / df_minor["interp"]
+            df_minor["tracing"] = df_minor["tracing"] / df_minor["interp"]
+            df_minor["interp"] = df_minor["interp"] / df_minor["interp"]
 
-        df_major["threaded"] = df_major["threaded"] / df_major["interp"]
-        df_major["tracing"] = df_major["tracing"] / df_major["interp"]
-        df_major["interp"] = df_major["interp"] / df_major["interp"]
+            df_major["threaded"] = df_major["threaded"] / df_major["interp"]
+            df_major["tracing"] = df_major["tracing"] / df_major["interp"]
+            df_major["interp"] = df_major["interp"] / df_major["interp"]
 
-        del df_minor["interp"]
-        del df_major["interp"]
+            del df_minor["interp"]
+            del df_major["interp"]
 
-        df_minor.plot.bar(
-            xlabel="Benchmarks",
-            ylabel="GC minor standarlized\nto interpreter (lower is better)",
-        )
-        plt.savefig('gc_minor.pdf', bbox_inches='tight')
-        df_major.plot.bar(
-            xlabel="Benchmarks",
-            ylabel="GC major standarlized\nto interpreter (lower is better)",
-        )
-        plt.savefig('gc_major.pdf', bbox_inches='tight')
+            ax = df_minor.plot.bar(
+                xlabel="Benchmarks",
+                ylabel="GC minor standardized\nto interpreter (lower is better)",
+            )
+            ax.axhline(y=1, color='green', linewidth=2)
+            plt.savefig('gc_dtandardized.pdf', bbox_inches='tight')
+
+            ax = df_major.plot.bar(
+                xlabel="Benchmarks",
+                ylabel="GC major standardized\nto interpreter (lower is better)",
+            )
+            ax.axhline(y=1, color='green', linewidth=2)
+            plt.savefig('gc_major_standardized.pdf', bbox_inches='tight')
+
+        else:
+            ax = df_minor.plot.bar(
+                xlabel="Benchmarks",
+                ylabel="GC minor (us)"
+            )
+            ax.axhline(y=1, color='green', linewidth=2)
+            plt.savefig('gc_minor.pdf', bbox_inches='tight')
+
+            ax = df_major.plot.bar(
+                xlabel="Benchmarks",
+                ylabel="GC major (us)",
+            )
+            ax.axhline(y=1, color='green', linewidth=2)
+            plt.savefig('gc_major.pdf', bbox_inches='tight')
+
         plt.show()
 
 
 if __name__ == "__main__":
-    path = sys.argv[1]
-    pysomplot_gc = PySOMPlotGC(path)
+    parser = ArgumentParser(description="A plotting script for PySOM")
+    parser.add_argument('dirname')
+    parser.add_argument(
+        "-s", "--standardize", action="store_true", help="Standardized to interpreter"
+    )
+    args = parser.parse_args()
+    path = args.dirname
+    pysomplot_gc = PySOMPlotGC(path, args.standardize)
     pysomplot_gc.plot()
