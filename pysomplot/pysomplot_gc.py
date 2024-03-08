@@ -10,6 +10,8 @@ from argparse import ArgumentParser
 from pprint import pprint
 from statistics import geometric_mean, variance
 
+from base import Base
+import util
 
 class GcInfo:
     def __init__(self, minor, collect_step, collect, duration_minor, duration_major):
@@ -29,18 +31,12 @@ class GcInfo:
         )
 
 
-class PySOMPlotGC:
-    def __init__(self, path, standardize):
-        self.standardize = standardize
-
-        if os.path.exists(path) and os.path.isdir(path):
-            self.path = path
-        else:
-            raise Exception(path + " is not directory")
+class PySOMPlotGC(Base):
+    def __init__(self, path, standardize, suffix=".txt"):
+        super().__init__(path, standardize, suffix)
 
         self.data = {}
         self.script_dir = os.path.dirname(__file__)
-        self.path_files = sorted(pathlib.Path(self.path).glob("*.txt"))
         for p in self.path_files:
             name = p.name
             basename = name.removesuffix(".txt")
@@ -58,10 +54,6 @@ class PySOMPlotGC:
 
                 self.data[exe][name][int(inv)] = gc_info
 
-    def _savefig(self, name, **kwargs):
-        if not os.path.isdir('output'):
-            os.mkdir('output')
-        plt.savefig(name, **kwargs)
 
     def _read_file(self, fpath):
         with open(fpath, "r") as f:
@@ -95,8 +87,6 @@ class PySOMPlotGC:
             )
 
     def plot(self):
-        style.use("seaborn-v0_8-darkgrid")
-
         benchmarks = self.data.keys()
         executables = ["interp", "threaded", "tracing"]
 
