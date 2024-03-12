@@ -256,8 +256,6 @@ class PySOMPlot:
         plt.figure(figsize=(10, 6))
         style.use("seaborn-v0_8-darkgrid")
         plt.boxplot(ys, labels=self.benchmarks + ["geo_mean"],
-                    vert=True,
-                    patch_artist=True,
                     showfliers=False)
         plt.margins(y=0.05)
         plt.xticks(rotation=90)
