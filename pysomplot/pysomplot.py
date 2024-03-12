@@ -2,6 +2,7 @@ import glob
 import os
 import sys
 import math
+from functools import reduce
 from statistics import geometric_mean, variance, median
 from argparse import ArgumentParser
 
@@ -185,7 +186,7 @@ class PySOMPlot:
             vs.append(var)
         return gmeans, vs
 
-    def plot_boxes(self):
+    def plot_boxes_per_invocation(self):
         output = self.basename.removesuffix(".data")
         data = self._process_relative_data_with_invocation()
 
@@ -222,6 +223,49 @@ class PySOMPlot:
         for fig in figs:
             pdf.savefig(fig)
         pdf.close()
+
+    def plot_boxes(self):
+        output = self.basename.removesuffix(".data")
+        data = self._process_relative_data_with_invocation()
+
+        results = []
+
+        for invocation in range(1, int(self.max_invocation) + 1):
+            for executor in self.executors:
+                globals()["results_{}".format(executor.replace("-", "_"))] = data[
+                    invocation
+                ][executor]
+
+            results.append(results_RPySOM_bc_jit_tier1)
+
+        data = {}
+        for result in results:
+            for bm in self.benchmarks:
+                if bm not in data:
+                    data[bm] = result[bm]
+                else:
+                    data[bm] = np.concatenate([data[bm], result[bm]])
+
+
+        gmeans = []
+        for bm in self.benchmarks:
+            gmeans.append(geometric_mean(data[bm]))
+        data["geo_mean"] = geometric_mean(gmeans)
+
+        ys = data.values()
+        plt.figure(figsize=(10, 6))
+        style.use("seaborn-v0_8-darkgrid")
+        plt.boxplot(ys, labels=self.benchmarks + ["geo_mean"],
+                    vert=True,
+                    patch_artist=True,
+                    showfliers=False)
+        plt.margins(y=0.05)
+        plt.xticks(rotation=90)
+        plt.ylabel("norm. to interp's median")
+        plt.xlabel("Benchmarks")
+        plt.tight_layout()
+        plt.savefig("output/" + output + "_box.pdf")
+        plt.show()
 
     def plot_line_per_invocation(self):
         output = self.basename.removesuffix(".data")
