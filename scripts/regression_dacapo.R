@@ -29,8 +29,9 @@ p_batik <- regression(batik)
 p_fop <- regression(fop)
 p_jython <- regression(jython)
 
-pdf("dacapo.pdf")
+pdf("output/dacapo.pdf")
 
 ggarrange(p_avrora, p_batik, p_fop, p_jython,
           ncol = 2, nrow = 2,
-          labels = c("avrora", "batik", "fop", "jython"))
+          labels = c("avrora", "batik", "fop", "jython"),
+          font.label=list(color="black", size=11))
