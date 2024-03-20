@@ -120,9 +120,9 @@ class PySOMPlotGC(Base):
                     duration_majors.append(gc_info.duration_major)
 
                 n = 100
-                duration_minor_gmean = median(duration_minors) / n  # geometric_mean(duration_minors) / n
+                duration_minor_gmean = geometric_mean(duration_minors) / n
                 duration_minor_var = variance(duration_minors) / n
-                duration_major_gmean = median(duration_majors) / n  # geometric_mean(duration_majors) / n
+                duration_major_gmean = geometric_mean(duration_majors) / n
                 duration_major_var = variance(duration_majors) / n
 
                 minor[exe][name] = duration_minor_gmean
