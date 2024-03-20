@@ -11,10 +11,116 @@ import numpy as np
 import matplotlib.pyplot as plt
 import matplotlib.style as style
 import matplotlib.backends.backend_pdf as backend_pdf
+import seaborn as sns
 
 from scipy.stats.mstats import gmean
 from pprint import pprint
 from numpy.lib import type_check
+
+
+class PySOMPlotPeak:
+    def __init__(self, filename):
+        self.filename = filename
+        self.results = {}
+
+        self.cut_at = 50
+
+        try:
+            f = open(self.filename, 'r')
+        except IOError:
+            raise Exception("not found: " + self.filename)
+
+        while line := f.readline():
+            if line.startswith("#"):
+                continue
+            if len(line) == 0:
+                break
+
+            line = line.split("\t")
+            try:
+                invocation, iteration, elapsed, benchmark, executor = (
+                    float(line[0]),
+                    float(line[1]),
+                    float(line[2]),
+                    line[5],
+                    line[6],
+                )
+            except Exception:
+                continue
+
+            if executor not in self.results:
+                self.results[executor] = {}
+
+            if benchmark not in self.results[executor]:
+                self.results[executor][benchmark] = {}
+
+            if invocation not in self.results[executor][benchmark]:
+                self.results[executor][benchmark][invocation] = []
+
+            self.results[executor][benchmark][invocation].append(elapsed)
+
+
+    def plot_boxes(self):
+        data = {}
+        interp = "RPySOM-bc-interp"
+        threaded = "RPySOM-bc-jit-tier1"
+        threaded_no_ic = "RPySOM-bc-jit-tier1-no-ic"
+
+        executors = [interp, threaded, threaded_no_ic]
+        benchmarks = sorted(set(self.results[interp].keys()))
+
+        base_median = {}
+
+        for executor in executors:
+            for benchmark in benchmarks:
+                for invocation in self.results[executor][benchmark]:
+                    elapsed = self.results[executor][benchmark][invocation]
+                    last_half = elapsed[len(elapsed) // 2:]
+
+                    if executor not in data:
+                        data[executor] = {}
+
+                    if benchmark not in data[executor]:
+                        data[executor][benchmark] = []
+
+                    data[executor][benchmark].extend(last_half)
+
+        for benchmark in benchmarks:
+            elapsed = data[interp][benchmark]
+            base_median[benchmark] = median(elapsed)
+
+        for executor in data:
+            for benchmark in benchmarks:
+                base = base_median[benchmark]
+                meds = [x/base for x in data[executor][benchmark]]
+                data[executor][benchmark] = meds
+
+        plt.figure(figsize=(10,6))
+        colors = ["pink", "lightgreen", "lightblue"]
+        axs = []
+
+        for i, executor in enumerate([threaded, threaded_no_ic]):
+            ys = data[executor].values()
+            pos = [j*3 + (i+1) for j in range(0, len(ys))]
+            ax = plt.boxplot(ys,
+                             positions=pos,
+                             widths=0.95,
+                             patch_artist=True, boxprops=dict(facecolor=colors.pop()),
+                             whis=[5, 95],
+                             showfliers=False,
+                             flierprops=dict(marker='.', markersize=2,)
+                             )
+            axs.append(ax)
+
+        plt.xticks([j*3 + 1.5 for j in range(0, len(benchmarks))], benchmarks)
+        plt.margins(y=0.05)
+        plt.xticks(rotation=45)
+        plt.ylabel("norm. to interp's median")
+        plt.xlabel("Benchmarks")
+        plt.tight_layout()
+        plt.grid(color='b', linestyle=':', linewidth=0.3)
+        plt.savefig("output/" + "rebench_peak_box.pdf")
+        # plt.show()
 
 
 class PySOMPlot:
@@ -232,9 +338,8 @@ class PySOMPlot:
 
         for invocation in range(1, int(self.max_invocation) + 1):
             for executor in self.executors:
-                globals()["results_{}".format(executor.replace("-", "_"))] = data[
-                    invocation
-                ][executor]
+                d = data[invocation][executor]
+                globals()["results_{}".format(executor.replace("-", "_"))] = d
 
             results.append(results_RPySOM_bc_jit_tier1)
 
@@ -253,12 +358,13 @@ class PySOMPlot:
         data["geo_mean"] = geometric_mean(gmeans)
 
         ys = data.values()
-        plt.figure(figsize=(10, 6))
+        plt.figure(figsize=(9,3))
         style.use("seaborn-v0_8-darkgrid")
         plt.boxplot(ys, labels=self.benchmarks + ["geo_mean"],
+                    patch_artist=True,
                     showfliers=False)
         plt.margins(y=0.05)
-        plt.xticks(rotation=90)
+        plt.xticks(rotation=45)
         plt.ylabel("norm. to interp's median")
         plt.xlabel("Benchmarks")
         plt.tight_layout()
@@ -402,7 +508,7 @@ class PySOMPlot:
             for i, benchmark in enumerate(self.benchmarks):
                 # results_tier1 = results_RPySOM_bc_jit_tier1[benchmark]
                 results = globals()["results_{}".format(executor_var_name)][benchmark]
-                ax = plt.subplot(len(self.benchmarks) // 2, 2, i + 1)
+                ax = plt.subplot(len(self.benchmarks) // 2 + 1, 2, i + 1)
                 plt.title(benchmark)
 
                 for j, data_with_invokes in enumerate(results):
@@ -550,6 +656,34 @@ class PySOMPlotExperiment:
         plt.savefig(self.dirname + "/gmean_w_var.pdf")
         plt.show()
 
+    def plot_boxes(self):
+        fig = plt.figure(figsize=(3, 6), tight_layout=True)
+        style.use("seaborn-v0_8-darkgrid")
+
+        df = pd.DataFrame()
+
+        for executor in self.executor_names:
+            data = []
+            for i in range(self.max_trial):
+                data.extend(globals()[executor][i+1])
+            df[executor] = data
+
+        new_df = pd.DataFrame()
+
+        for executor in self.executor_names:
+            new_df[executor] = df[executor] / df["RPySOM-bc-interp-exp"]
+
+        new_df.drop(columns="RPySOM-bc-interp-exp", inplace=True)
+        ax = new_df.boxplot(
+            xlabel="Executor", ylabel="Elapsed time norm. to interpreter",
+            patch_artist=True, showfliers=False,
+            color=dict(medians="Orange")
+        )
+        ax.set_ymargin(0.05)
+        plt.xticks(rotation=90)
+        plt.savefig("output/experiment_box.pdf")
+        plt.show()
+
 
 if __name__ == "__main__":
     parser = ArgumentParser(description="A plotting script for PySOM")
@@ -566,11 +700,12 @@ if __name__ == "__main__":
     target = args.target
     if args.peak:
         assert os.path.isfile(target), "Add path to file"
-        pysom_plot = PySOMPlot(target)
-        pysom_plot.plot_line_with_invocation()
+        pysom_plot = PySOMPlotPeak(target)
+        # pysom_plot.plot_line_with_invocation()
         pysom_plot.plot_boxes()
     elif args.exp:
         assert os.path.isdir(target), "Add path to dir"
         pysom_plot_exp = PySOMPlotExperiment(target)
-        pysom_plot_exp.plot_invocations_subplots()
-        pysom_plot_exp.plot_average()
+        # pysom_plot_exp.plot_invocations_subplots()
+        # pysom_plot_exp.plot_average()
+        pysom_plot_exp.plot_boxes()
