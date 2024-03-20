@@ -89,28 +89,32 @@ class PySOMPlotPeak:
             elapsed = data[interp][benchmark]
             base_median[benchmark] = median(elapsed)
 
+        geomeans = {threaded: [], threaded_no_ic: [], interp: []}
+
         for executor in data:
             for benchmark in benchmarks:
                 base = base_median[benchmark]
                 meds = [x/base for x in data[executor][benchmark]]
                 data[executor][benchmark] = meds
+                geomeans[executor].append(geometric_mean(meds))
+
+
+        for executor in geomeans:
+            geomeans[executor] = geometric_mean(geomeans[executor])
 
         plt.figure(figsize=(10,6))
         colors = ["pink", "lightgreen", "lightblue"]
-        axs = []
 
         for i, executor in enumerate([threaded, threaded_no_ic]):
-            ys = data[executor].values()
+            ys = list(data[executor].values())
             pos = [j*3 + (i+1) for j in range(0, len(ys))]
-            ax = plt.boxplot(ys,
-                             positions=pos,
-                             widths=0.95,
-                             patch_artist=True, boxprops=dict(facecolor=colors.pop()),
-                             whis=[5, 95],
-                             showfliers=False,
-                             flierprops=dict(marker='.', markersize=2,)
-                             )
-            axs.append(ax)
+            plt.boxplot(ys,
+                        positions=pos,
+                        widths=0.95,
+                        patch_artist=True, boxprops=dict(facecolor=colors.pop()),
+                        whis=[5, 95],
+                        showfliers=False,
+                        flierprops=dict(marker='.', markersize=2,))
 
         plt.xticks([j*3 + 1.5 for j in range(0, len(benchmarks))], benchmarks)
         plt.margins(y=0.05)
