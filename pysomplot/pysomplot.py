@@ -18,11 +18,15 @@ from scipy.stats.mstats import gmean
 from pprint import pprint
 from numpy.lib import type_check
 
+from base import Base
 
-class PySOMPlotPeak:
+
+class PySOMPlotPeak(Base):
     def __init__(self, filename):
         self.filename = filename
         self.results = {}
+
+        style.use("seaborn-v0_8-darkgrid")
 
         self.cut_at = 50
 
@@ -31,17 +35,22 @@ class PySOMPlotPeak:
         self.threaded_no_ic = "RPySOM-bc-jit-tier1-no-ic"
         self.threaded_no_ic_no_opt = "RPySOM-bc-jit-tier1-no-ic-no-handler-opt"
 
-        self.executors = [self.interp, self.threaded, self.threaded_no_ic, self.threaded_no_ic_no_opt]
+        self.executors = [
+            self.interp,
+            self.threaded,
+            self.threaded_no_ic,
+            self.threaded_no_ic_no_opt,
+        ]
 
         self.executor_map = {
             self.interp: "interp.",
             self.threaded: "threaded code",
             self.threaded_no_ic: "w/o IC",
-            self.threaded_no_ic_no_opt: "w/o IC and handler opt."
+            self.threaded_no_ic_no_opt: "w/o IC and handler opt.",
         }
 
         try:
-            f = open(self.filename, 'r')
+            f = open(self.filename, "r")
         except IOError:
             raise Exception("not found: " + self.filename)
 
@@ -74,7 +83,6 @@ class PySOMPlotPeak:
 
             self.results[executor][benchmark][invocation].append(elapsed)
 
-
     def plot_boxes(self):
         data = {}
         benchmarks = sorted(set(self.results[self.interp].keys()))
@@ -84,7 +92,7 @@ class PySOMPlotPeak:
             for benchmark in benchmarks:
                 for invocation in self.results[executor][benchmark]:
                     elapsed = self.results[executor][benchmark][invocation]
-                    last_half = elapsed[len(elapsed) // 2:]
+                    last_half = elapsed[len(elapsed) // 2 :]
 
                     if executor not in data:
                         data[executor] = {}
@@ -102,49 +110,67 @@ class PySOMPlotPeak:
             self.threaded: [],
             self.threaded_no_ic: [],
             self.threaded_no_ic_no_opt: [],
-            self.interp: []
+            self.interp: [],
         }
 
         for executor in data:
             for benchmark in benchmarks:
                 base = base_median[benchmark]
-                meds = [x/base for x in data[executor][benchmark]]
+                meds = [x / base for x in data[executor][benchmark]]
                 data[executor][benchmark] = meds
                 geomeans[executor].append(geometric_mean(meds))
 
         for executor in geomeans:
             geomeans[executor] = geometric_mean(geomeans[executor])
 
-        fig, (ax1, ax2) = plt.subplots(1, 2, figsize=(12,6), gridspec_kw={'width_ratios': [8, 1]})
-        plt.style.use('default')
+        fig, (ax1, ax2) = plt.subplots(
+            1, 2, figsize=(12, 6), gridspec_kw={"width_ratios": [12, 1]}
+        )
 
-        colors = ["pink", "lightgreen", "lightblue"]
+        colors = ["tab:blue", "tab:green", "tab:pink"]
         targets = [self.threaded, self.threaded_no_ic, self.threaded_no_ic_no_opt]
+        boxes = []
 
         for i, executor in enumerate(targets):
             ys = list(data[executor].values())
-            pos = [j*4 + (i+1) for j in range(0, len(ys))]
-            ax1.boxplot(ys, positions=pos, widths=0.9, whis=[5, 95],
-                        patch_artist=True, boxprops=dict(facecolor=colors[i]),
-                        showfliers=False, flierprops=dict(marker='.', markersize=2,))
+            pos = [j * 4 + (i + 1) for j in range(0, len(ys))]
+            box = ax1.boxplot(
+                ys,
+                positions=pos,
+                widths=0.9,
+                whis=[0, 100],
+                patch_artist=True,
+                boxprops=dict(facecolor=colors[i]),
+                showfliers=True,
+                flierprops=dict(
+                    marker=".",
+                    markersize=2,
+                ),
+            )
+            boxes.append(box)
 
         ax1.set_title("Performance of threaded code and optimizations")
-        ax1.set_xticks([j*4 + 2 for j in range(0, len(benchmarks))], benchmarks, rotation=45)
+        ax1.set_xticks(
+            [j * 4 + 2 for j in range(0, len(benchmarks))], benchmarks, rotation=45
+        )
         ax1.set_ylabel("norm. to interp's median")
         ax1.set_xlabel("Benchmarks")
-        ax1.grid(color='b', linestyle=':', linewidth=0.25)
+        # ax1.grid(color='b', linestyle=':', linewidth=0.25)
 
         for i, executor in enumerate(targets):
             ax2.bar(self.executor_map[executor], geomeans[executor], color=colors[i])
         ax2.set_xticks([])
         ax2.set_xlabel("geo_mean", rotation=45)
-        ax2.grid(color='b', linestyle=':', linewidth=0.5)
-        ax2.legend(["threaded", "w/o IC", "w/o IC and handler opt."], loc='lower left',
-                   bbox_to_anchor=(-0.5, 1))
+        # ax2.grid(color='b', linestyle=':', linewidth=0.5)
+        ax2.legend(
+            ["threaded", "w/o IC", "w/o IC and handler opt."],
+            loc="lower left",
+            bbox_to_anchor=(-1, 1),
+        )
 
         plt.tight_layout()
         plt.savefig("output/" + "rebench_threaded_box.pdf")
-        plt.show()
+        # plt.show()
 
 
 class PySOMPlot:
@@ -375,18 +401,20 @@ class PySOMPlot:
                 else:
                     data[bm] = np.concatenate([data[bm], result[bm]])
 
-
         gmeans = []
         for bm in self.benchmarks:
             gmeans.append(geometric_mean(data[bm]))
         data["geo_mean"] = geometric_mean(gmeans)
 
         ys = data.values()
-        plt.figure(figsize=(9,3))
+        plt.figure(figsize=(9, 3))
         style.use("seaborn-v0_8-darkgrid")
-        plt.boxplot(ys, labels=self.benchmarks + ["geo_mean"],
-                    patch_artist=True,
-                    showfliers=False)
+        plt.boxplot(
+            ys,
+            labels=self.benchmarks + ["geo_mean"],
+            patch_artist=True,
+            showfliers=False,
+        )
         plt.margins(y=0.05)
         plt.xticks(rotation=45)
         plt.ylabel("norm. to interp's median")
@@ -689,7 +717,7 @@ class PySOMPlotExperiment:
         for executor in self.executor_names:
             data = []
             for i in range(self.max_trial):
-                data.extend(globals()[executor][i+1])
+                data.extend(globals()[executor][i + 1])
             df[executor] = data
 
         new_df = pd.DataFrame()
@@ -699,9 +727,11 @@ class PySOMPlotExperiment:
 
         new_df.drop(columns="RPySOM-bc-interp-exp", inplace=True)
         ax = new_df.boxplot(
-            xlabel="Executor", ylabel="Elapsed time norm. to interpreter",
-            patch_artist=True, showfliers=False,
-            color=dict(medians="Orange")
+            xlabel="Executor",
+            ylabel="Elapsed time norm. to interpreter",
+            patch_artist=True,
+            showfliers=False,
+            color=dict(medians="Orange"),
         )
         ax.set_ymargin(0.05)
         plt.xticks(rotation=90)
