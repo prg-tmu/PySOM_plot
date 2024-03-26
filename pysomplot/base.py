@@ -1,5 +1,6 @@
 import matplotlib.style as style
 import matplotlib.pyplot as plt
+import seaborn as sns
 import os
 import pathlib
 
@@ -14,7 +15,8 @@ class Base(object):
 
         self.max_invocation = -1
 
-        style.use("seaborn-v0_8-darkgrid")
+        sns.set_style("darkgrid")
+        sns.set_context("paper")
 
     def _savefig(self, name, **kwargs):
         if not os.path.isdir('output'):
