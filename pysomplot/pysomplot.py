@@ -26,7 +26,8 @@ class PySOMPlotPeak(Base):
         self.filename = filename
         self.results = {}
 
-        style.use("seaborn-v0_8-darkgrid")
+        sns.set_style("darkgrid")
+        sns.set_context("paper")
 
         self.cut_at = 50
 
@@ -82,6 +83,85 @@ class PySOMPlotPeak(Base):
                 self.results[executor][benchmark][invocation] = []
 
             self.results[executor][benchmark][invocation].append(elapsed)
+
+    def plot_bars(self):
+        data = {}
+        benchmarks = sorted(set(self.results[self.interp].keys()))
+        base_median = {}
+
+        for executor in self.executors:
+            for benchmark in benchmarks:
+                for invocation in self.results[executor][benchmark]:
+                    elapsed = self.results[executor][benchmark][invocation]
+                    last_half = elapsed[len(elapsed) // 2 :]
+
+                    if executor not in data:
+                        data[executor] = {}
+
+                    if benchmark not in data[executor]:
+                        data[executor][benchmark] = []
+
+                    data[executor][benchmark].extend(last_half)
+
+        for benchmark in benchmarks:
+            elapsed = data[self.interp][benchmark]
+            base_median[benchmark] = median(elapsed)
+
+        geomean_all = {
+            self.threaded: [],
+            self.threaded_no_ic: [],
+            self.threaded_no_ic_no_opt: [],
+        }
+
+        geomeans = {
+            self.threaded: {},
+            self.threaded_no_ic: {},
+            self.threaded_no_ic_no_opt: {},
+        }
+
+        variances = {
+            self.threaded: {},
+            self.threaded_no_ic: {},
+            self.threaded_no_ic_no_opt: {},
+        }
+
+        for executor in data:
+            if executor == self.interp:
+                continue
+            for benchmark in benchmarks:
+                base = base_median[benchmark]
+                meds = [x / base for x in data[executor][benchmark]]
+                geomeans[executor][benchmark] = geometric_mean(meds)
+                variances[executor][benchmark] = variance(meds)
+                geomean_all[executor].append(geometric_mean(meds))
+
+        for executor in geomeans:
+            geomean_all[executor] = geometric_mean(geomean_all[executor])
+
+        fig, (ax1, ax2) = plt.subplots(
+            1, 2, figsize=(12, 6), gridspec_kw={"width_ratios": [12, 1]}
+        )
+
+        x = np.arange(len(benchmarks))
+        width = 0.2
+        colors = ["tab:blue", "tab:green", "tab:pink"]
+        labels = ["threaded code", "w/o IC", "w/o IC and handler opt."]
+        for i, exe in enumerate(geomeans):
+            ax1.bar(x + (i * width), geomeans[exe].values(), width, yerr=variances[exe].values(),
+                    label=labels[i], color=colors[i])
+        ax1.set_xticks(x + width + width/2)
+        ax1.set_xticklabels(benchmarks, rotation=45)
+        ax1.legend()
+
+        for i, exe in enumerate(geomean_all):
+            ax2.bar(self.executor_map[exe], geomean_all[exe], color=colors[i])
+
+        ax2.set_xticks([])
+        ax2.set_xlabel("geo_mean", rotation=45)
+
+        self._savefig("rebench_threaded_bar.pdf")
+        plt.show()
+
 
     def plot_boxes(self):
         data = {}
@@ -163,14 +243,14 @@ class PySOMPlotPeak(Base):
         ax2.set_xlabel("geo_mean", rotation=45)
         # ax2.grid(color='b', linestyle=':', linewidth=0.5)
         ax2.legend(
-            ["threaded", "w/o IC", "w/o IC and handler opt."],
+            ["threaded code", "w/o IC", "w/o IC and handler opt."],
             loc="lower left",
             bbox_to_anchor=(-1, 1),
         )
 
         plt.tight_layout()
         plt.savefig("output/" + "rebench_threaded_box.pdf")
-        # plt.show()
+        plt.show()
 
 
 class PySOMPlot:
@@ -756,7 +836,7 @@ if __name__ == "__main__":
         assert os.path.isfile(target), "Add path to file"
         pysom_plot = PySOMPlotPeak(target)
         # pysom_plot.plot_line_with_invocation()
-        pysom_plot.plot_boxes()
+        pysom_plot.plot_bars()
     elif args.exp:
         assert os.path.isdir(target), "Add path to dir"
         pysom_plot_exp = PySOMPlotExperiment(target)
