@@ -11,6 +11,7 @@ from sklearn.linear_model import LinearRegression
 
 from base import Base
 
+
 class PySOMPlotPyPyLog(Base):
     def __init__(self, path, standardize, suffix=".log"):
         super().__init__(path, standardize, suffix)
@@ -50,7 +51,6 @@ class PySOMPlotPyPyLog(Base):
                         else:
                             self.data[exe][name][inv] = time
 
-
     def plot(self):
         import pprint
         import statistics as st
@@ -70,7 +70,6 @@ class PySOMPlotPyPyLog(Base):
 
                     result[exe][name].append(self.data[exe][name][i])
 
-
         medians = {}
         variances = {}
         for exe in result:
@@ -79,7 +78,9 @@ class PySOMPlotPyPyLog(Base):
             for name in result[exe]:
                 medians[exe][name] = {}
                 variances[exe][name] = {}
-                medians[exe][name] = st.median(result[exe][name]) * 1e3 # second to millisecond
+                medians[exe][name] = (
+                    st.median(result[exe][name]) * 1e3
+                )  # second to millisecond
                 variances[exe][name] = st.variance(result[exe][name]) * 1e3
 
         df_bytesize = pd.read_csv("data/benchmark_bytesize.csv")
@@ -98,15 +99,30 @@ class PySOMPlotPyPyLog(Base):
         yerr_threaded = df_var["threaded"]
         yerr_tracing = df_var["tracing"]
 
-        fig, ax = plt.subplots()
-        ax.scatter(x, y_threaded, c='tab:blue', s=100)
-        ax.scatter(x, y_tracing, c='tab:red', s=100)
+        fig, ax = plt.subplots(figsize=(6,6), tight_layout=True)
+        dotsize = 12
+        ax.scatter(x, y_threaded, c="tab:blue", s=dotsize)
+        ax.scatter(x, y_tracing, c="tab:red", s=dotsize)
 
-        x1, x2, y1, y2 = -100, 1750, -25, 1100
+        ax.axvline(x=x["pagerank"], c="black", ls=":", linewidth=0.75)
+        ax.text(x=x["pagerank"], y=-85, s="pagerank", fontsize=8)
+
+        x1, x2, y1, y2 = -100, 1550, -25, 1100
         axins = ax.inset_axes(
-            [0.42, 0.42, 0.58, 0.58],
-            xlim=(x1, x2), ylim=(y1, y2),
+            [0.2, 0.2, 0.8, 0.8],
+            xlim=(x1, x2),
+            ylim=(y1, y2),
         )
+
+        # # show benchmark names
+        # for l in x.keys():
+        #     _x = x[l]
+        #     _y = 1125
+        #     if l == "Recurse":
+        #         _x -= 200
+
+        #     axins.text(x=_x, y=_y, s=l, rotation=90, fontsize=6)
+        #     axins.axvline(x=x[l], color='black', ls=':', linewidth=0.75)
 
         mod = LinearRegression()
 
@@ -116,12 +132,23 @@ class PySOMPlotPyPyLog(Base):
         y_lin_fit = mod_lin.predict(df_x)
         r2_lin = mod.score(df_x, df_y)
 
-        axins.scatter(x, y_threaded, c='tab:blue', s=100)
-        axins.scatter(x, y_tracing, c='tab:red', s=100)
+        axins.scatter(x, y_threaded, c="tab:blue", s=dotsize)
+        axins.scatter(x, y_tracing, c="tab:red", s=dotsize)
 
-        axins.plot(df_x, y_lin_fit, color='tab:blue', linewidth=2)
-        axins.text(1250, 50, '$ y = $' + str(round(mod.coef_[0][0], 4)) + " x + " + str(round(mod.intercept_[0], 2)), fontsize=12)
-        axins.text(1250, 100, '$ R^{2} $=' + str(round(r2_lin, 4)), fontsize=12)
+        axins.plot(df_x, y_lin_fit, color="tab:blue", linewidth=1)
+        axins.text(
+            1250,
+            50,
+            "$ y = $"
+            + str(round(mod.coef_[0][0], 4))
+            + " x + "
+            + str(round(mod.intercept_[0], 2)),
+            fontsize=10,
+            c="tab:blue",
+        )
+        axins.text(
+            1250, 100, "$ R^{2} $=" + str(round(r2_lin, 4)), fontsize=10, c="tab:blue"
+        )
 
         df_x = pd.DataFrame(x).drop("pagerank")
         df_y = pd.DataFrame(y_tracing).drop("pagerank")
@@ -129,18 +156,34 @@ class PySOMPlotPyPyLog(Base):
         y_lin_fit = mod_lin.predict(df_x)
         r2_lin = mod.score(df_x, df_y)
 
-        axins.plot(df_x, y_lin_fit, color='tab:red', linewidth=2)
-        axins.text(100, 300, '$ y = $' + str(round(mod.coef_[0][0], 4)) + " x + " + str(round(mod.intercept_[0], 2)), fontsize=12)
-        axins.text(100, 350, '$ R^{2} $=' + str(round(r2_lin, 4)), fontsize=12)
+        axins.plot(df_x, y_lin_fit, color="tab:red", linewidth=1)
+        axins.text(
+            100,
+            300,
+            "$ y = $"
+            + str(round(mod.coef_[0][0], 4))
+            + " x + "
+            + str(round(mod.intercept_[0], 2)),
+            fontsize=10,
+            c="tab:red",
+        )
+        axins.text(
+            100, 350, "$ R^{2} $=" + str(round(r2_lin, 4)), fontsize=10, c="tab:red"
+        )
 
         ax.indicate_inset_zoom(axins, edgecolor="black")
 
+        ax.set_xlabel("Bytecode size (byte)")
+        ax.set_ylabel("Compilation time (ms)")
+        ax.legend(["threaded code", "tracing JIT"], loc="upper right")
+
+        self._savefig("relation_compsize_bytecode.pdf")
         plt.show()
 
 
 if __name__ == "__main__":
     parser = argparse.ArgumentParser(description="A plotting script for PySOM")
-    parser.add_argument('dirname')
+    parser.add_argument("dirname")
     parser.add_argument(
         "-s", "--standardize", action="store_true", help="Standardized to interpreter"
     )
