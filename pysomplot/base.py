@@ -18,7 +18,7 @@ class Base(object):
         sns.set_style("darkgrid")
         sns.set_context("paper")
 
-    def _savefig(self, name, **kwargs):
+    def _savefig(self, name, *args, **kwargs):
         if not os.path.isdir('output'):
             os.mkdir('output')
 
