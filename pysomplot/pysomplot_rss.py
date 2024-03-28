@@ -68,17 +68,20 @@ class PySOMPlotRss(Base):
 
                 data_gmean[exe][name] = gmean
                 data_var[exe][name] = var
+            vals = list(data_gmean[exe].values())
+            data_gmean[exe]["geo_mean"] = geometric_mean(vals)
 
         df = pd.DataFrame(data_gmean)
-        ax = df.plot.bar(
-            xlabel="Benchmarks",
-            ylabel="RSS (MB, lower is better)",
+        ax = df.plot.barh(
+            ylabel="Benchmarks",
+            xlabel="RSS (MB, lower is better)",
             yerr=pd.DataFrame(data_var),
+            color=["tab:orange", "tab:blue", "tab:red"],
             capsize=2,
-            figsize=(10, 6)
+            figsize=(4,7)
         )
         self._savefig("rss.pdf")
-        plt.show()
+        # plt.show()
 
 
 if __name__ == "__main__":
