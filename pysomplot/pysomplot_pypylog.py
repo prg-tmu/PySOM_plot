@@ -99,7 +99,7 @@ class PySOMPlotPyPyLog(Base):
         yerr_threaded = df_var["threaded"]
         yerr_tracing = df_var["tracing"]
 
-        fig, ax = plt.subplots(figsize=(8,7), tight_layout=True)
+        fig, ax = plt.subplots(figsize=(8,4), tight_layout=True)
         dotsize = 15
         ax.scatter(x, y_threaded, c="tab:blue", s=dotsize)
         ax.scatter(x, y_tracing, c="tab:red", s=dotsize)
@@ -115,14 +115,24 @@ class PySOMPlotPyPyLog(Base):
         for l in x.keys():
             _x = x[l]
             _y = 1150
+            _l = l
+            if l == "queens":
+                _l = "queens,towers"
+            if l == "towers":
+                continue
             if l == "recurse":
                 _x -= 15
             if l == "sieve":
                 _x -= 10
-            if l == "queens":
-                _x -= 20
+            if l == "bounce":
+                _x += 10
+            if l == "permute":
+                _x += 10
+            if l == "storage":
+                _x += 15
 
-            ax.text(x=_x, y=_y, s=l, rotation=90, fontsize=8)
+
+            ax.text(x=_x, y=_y, s=_l, rotation=90, fontsize=8)
             ax.axvline(x=x[l], color='black', ls=':', linewidth=0.5)
 
         mod = LinearRegression()
@@ -148,7 +158,7 @@ class PySOMPlotPyPyLog(Base):
             c="tab:blue",
         )
         ax.text(
-            1250, 100, "$ R^{2} $=" + str(round(r2_lin, 4)), fontsize=10, c="tab:blue"
+            1250, 120, "$ R^{2} $=" + str(round(r2_lin, 4)), fontsize=10, c="tab:blue"
         )
 
         df_x = pd.DataFrame(x)
@@ -169,7 +179,7 @@ class PySOMPlotPyPyLog(Base):
             c="tab:red",
         )
         ax.text(
-            100, 350, "$ R^{2} $=" + str(round(r2_lin, 4)), fontsize=10, c="tab:red"
+            100, 370, "$ R^{2} $=" + str(round(r2_lin, 4)), fontsize=10, c="tab:red"
         )
 
         # ax.indicate_inset_zoom(axins, edgecolor="black")
