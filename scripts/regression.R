@@ -25,7 +25,7 @@ p <- ggplot(data, aes(x = rank, y = count)) + geom_point() + theme(text = elemen
     geom_smooth(method = "lm", se = FALSE) +
     geom_label(data = data,
                aes(x = Inf, y = Inf,
-                   label = paste("R2 =", summary(m)$r.squared, sep = " ")),
+                   label = paste("R2 =", round(summary(m)$r.squared, digits = 3), sep = " ")),
                hjust = 1, vjust = 1, size=8)
 # Log base 10 scale + log ticks (on left and bottom side)
 p + scale_y_log10() +

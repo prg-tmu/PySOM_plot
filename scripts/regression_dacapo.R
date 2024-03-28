@@ -15,8 +15,8 @@ regression <- function(data) {
         geom_smooth(method = "lm", se = FALSE) +
         geom_label(data = data,
                    aes(x = Inf, y = Inf,
-                       label = paste("R2 =", summary(m)$r.squared, sep = " ")),
-                   hjust = 1, vjust = 1) +
+                       label = paste("R2 =", round(summary(m)$r.squared, digits = 3), sep = " ")),
+                   hjust = 1, vjust = 1, size=7) +
         scale_y_log10() +
         scale_x_log10() +
         annotation_logticks(sides = "lb")
