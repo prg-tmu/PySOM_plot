@@ -1,4 +1,5 @@
 import glob
+import itertools
 import os
 import sys
 import math
@@ -682,7 +683,7 @@ class PySOMPlot:
 class PySOMPlotExperiment:
     def __init__(self, dirname):
         self.dirname = dirname
-        self.experiment_name = set()
+        self.experiment_names = set()
         self.executor_names = set()
         self.max_trial = -1
         self.geomeans_vars = {}
@@ -714,37 +715,46 @@ class PySOMPlotExperiment:
                     except Exception:
                         continue
 
-                    self.experiment_name.add(benchmark)
+                    self.experiment_names.add(benchmark)
                     self.max_trial = i + 1 if i + 1 > self.max_trial else self.max_trial
 
-                    exec_name = executor + "-exp"
+                    exec_name = executor
                     self.executor_names.add(exec_name)
 
                     if exec_name not in globals():
                         globals()[exec_name] = {}
 
-                    if i + 1 not in globals()[exec_name]:
-                        globals()[exec_name][i + 1] = []
+                    if benchmark not in globals()[exec_name]:
+                        globals()[exec_name][benchmark] = {}
 
-                    globals()[exec_name][i + 1].append(elapsed)
+                    if i + 1 not in globals()[exec_name][benchmark]:
+                        globals()[exec_name][benchmark][i + 1] = []
+
+                    globals()[exec_name][benchmark][i + 1].append(elapsed)
+
+        baselines = {}
+        data = globals()["RPySOM-bc-interp"]
+        for bm in self.experiment_names:
+            values = itertools.chain.from_iterable(data[bm].values())
+            baselines[bm] = median(values)
 
         for executor in self.executor_names:
             data = globals()[executor]
-            for i in range(self.max_trial):
-                l = data[i + 1]
-                gmean = geometric_mean(l)
-                var = variance(l)
-                med = median(l)
-                if executor not in self.geomeans_vars:
-                    self.geomeans_vars[executor] = []
-                    self.geomeans[executor] = []
-                    self.variances[executor] = []
-                    self.medians[executor] = []
-                self.geomeans[executor].append(gmean)
-                self.variances[executor].append(var)
-                self.medians[executor].append(med)
+            for bm in self.experiment_names:
+                for i in range(self.max_trial):
+                    lst = data[bm][i+1]
+                    l = [x / baselines[bm] for x in lst[len(lst)//2:]]
+
+                    if executor not in self.medians:
+                        self.medians[executor] = {}
+
+                    if bm not in self.medians[executor]:
+                        self.medians[executor][bm] = []
+
+                    self.medians[executor][bm].append(l)
 
     def plot_invocations_subplots(self):
+        "deprecated"
         fig = plt.figure(figsize=(10, 10), tight_layout=True)
         style.use("seaborn-v0_8-darkgrid")
         for i, executor in enumerate(self.executor_names):
@@ -767,6 +777,7 @@ class PySOMPlotExperiment:
         plt.show()
 
     def plot_average(self):
+        "deprecated"
         fig = plt.figure(figsize=(8, 8), tight_layout=True)
         style.use("seaborn-v0_8-darkgrid")
         pallets = ["b", "g", "r", "c"]
@@ -788,34 +799,56 @@ class PySOMPlotExperiment:
         plt.savefig(self.dirname + "/gmean_w_var.pdf")
         plt.show()
 
-    def plot_boxes(self):
-        fig = plt.figure(figsize=(3, 6), tight_layout=True)
-        style.use("seaborn-v0_8-darkgrid")
+    def plot_bars(self):
+        sns.set_style("darkgrid")
+        sns.set_context("paper")
 
-        df = pd.DataFrame()
+        data = {}
+        err = {}
 
-        for executor in self.executor_names:
-            data = []
-            for i in range(self.max_trial):
-                data.extend(globals()[executor][i + 1])
-            df[executor] = data
+        self.executor_names = sorted(self.executor_names)
+        self.experiment_names = sorted(self.experiment_names)
 
-        new_df = pd.DataFrame()
+        naming = {
+            "Experiment2": "ExpRandom",
+            "Experiment3": "ExpAscend",
+            "Experiment4": "ExpDescend",
+        }
 
-        for executor in self.executor_names:
-            new_df[executor] = df[executor] / df["RPySOM-bc-interp-exp"]
+        for exe in self.executor_names:
+            if exe not in data:
+                data[exe], err[exe] = {}, {}
+            for i, exp in enumerate(self.experiment_names):
+                if exp not in data[exe]:
+                    data[exe][exp], err[exe][exp] = {}, {}
 
-        new_df.drop(columns="RPySOM-bc-interp-exp", inplace=True)
-        ax = new_df.boxplot(
-            xlabel="Executor",
-            ylabel="Elapsed time norm. to interpreter",
-            patch_artist=True,
-            showfliers=False,
-            color=dict(medians="Orange"),
+                if exe == "RPySOM-bc-interp":
+                    pass
+
+                meds = list(itertools.chain.from_iterable(self.medians[exe][exp]))
+                gmean = geometric_mean(meds)
+                var = variance(meds)
+                data[exe][exp], err[exe][exp] = gmean, var
+
+        df = pd.DataFrame(data)
+        df_err = pd.DataFrame(err)
+        del df["RPySOM-bc-interp"], df_err["RPySOM-bc-interp"]
+
+        labs = ["multitier", "threaded code gen.", "tracing"]
+        ax = df.plot.bar(
+            color={
+                "RPySOM-bc-jit-hybrid": "tab:orange",
+                "RPySOM-bc-jit-tier1": "tab:blue",
+                "RPySOM-bc-jit-tier2": "tab:red"
+            },
+            yerr=df_err,
+            width=0.4,
+            figsize=(4,6),
         )
-        ax.set_ymargin(0.05)
-        plt.xticks(rotation=90)
-        plt.savefig("output/experiment_box.pdf")
+        ax.set_xticklabels(naming.values(), rotation=45)
+        plt.legend(labs, loc='lower right')
+        plt.tight_layout()
+        plt.savefig("output/experiment_bar.pdf")
         plt.show()
 
 
@@ -842,4 +875,4 @@ if __name__ == "__main__":
         pysom_plot_exp = PySOMPlotExperiment(target)
         # pysom_plot_exp.plot_invocations_subplots()
         # pysom_plot_exp.plot_average()
-        pysom_plot_exp.plot_boxes()
+        pysom_plot_exp.plot_bars()
