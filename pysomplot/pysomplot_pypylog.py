@@ -51,7 +51,7 @@ class PySOMPlotPyPyLog(Base):
                         else:
                             self.data[exe][name][inv] = time
 
-    def plot(self):
+    def plot_bytecode_comptime(self):
         import pprint
         import statistics as st
 
@@ -86,7 +86,6 @@ class PySOMPlotPyPyLog(Base):
         df_bytesize = pd.read_csv("data/benchmark_bytesize.csv")
         df_bytesize["program"] = df_bytesize["program"].str.lower()
         df_bytesize = df_bytesize.set_index("program")
-        df_bytesize = df_bytesize.drop("json")
 
         df_med = pd.DataFrame(medians)
         df_var = pd.DataFrame(variances)
@@ -112,28 +111,28 @@ class PySOMPlotPyPyLog(Base):
         # )
 
         # show benchmark names
-        for l in x.keys():
-            _x = x[l]
-            _y = 1150
-            _l = l
-            if l == "queens":
-                _l = "queens,towers"
-            if l == "towers":
-                continue
-            if l == "recurse":
-                _x -= 15
-            if l == "sieve":
-                _x -= 10
-            if l == "bounce":
-                _x += 10
-            if l == "permute":
-                _x += 10
-            if l == "storage":
-                _x += 15
+        # for l in x.keys():
+        #     _x = x[l]
+        #     _y = 2350
+        #     _l = l
+        #     if l == "queens":
+        #         _l = "queens,towers"
+        #     if l == "towers":
+        #         continue
+        #     if l == "recurse":
+        #         _x -= 15
+        #     if l == "sieve":
+        #         _x -= 10
+        #     if l == "bounce":
+        #         _x += 10
+        #     if l == "permute":
+        #         _x += 10
+        #     if l == "storage":
+        #         _x += 15
 
 
-            ax.text(x=_x, y=_y, s=_l, rotation=90, fontsize=8)
-            ax.axvline(x=x[l], color='black', ls=':', linewidth=0.5)
+        #     ax.text(x=_x, y=_y, s=_l, rotation=90, fontsize=8)
+        #     ax.axvline(x=x[l], color='black', ls=':', linewidth=0.5)
 
         mod = LinearRegression()
 
@@ -148,8 +147,8 @@ class PySOMPlotPyPyLog(Base):
 
         ax.plot(df_x, y_lin_fit, color="tab:blue", linewidth=1.5)
         ax.text(
-            1250,
-            50,
+            2500,
+            500,
             "$ y = $"
             + str(round(mod.coef_[0][0], 4))
             + " x + "
@@ -158,7 +157,7 @@ class PySOMPlotPyPyLog(Base):
             c="tab:blue",
         )
         ax.text(
-            1250, 120, "$ R^{2} $=" + str(round(r2_lin, 4)), fontsize=10, c="tab:blue"
+            2500, 1000, "$ R^{2} $=" + str(round(r2_lin, 4)), fontsize=10, c="tab:blue"
         )
 
         df_x = pd.DataFrame(x)
@@ -169,8 +168,8 @@ class PySOMPlotPyPyLog(Base):
 
         ax.plot(df_x, y_lin_fit, color="tab:red", linewidth=1)
         ax.text(
-            100,
-            300,
+            2500,
+            4000,
             "$ y = $"
             + str(round(mod.coef_[0][0], 4))
             + " x + "
@@ -179,14 +178,15 @@ class PySOMPlotPyPyLog(Base):
             c="tab:red",
         )
         ax.text(
-            100, 370, "$ R^{2} $=" + str(round(r2_lin, 4)), fontsize=10, c="tab:red"
+            2500, 4500, "$ R^{2} $=" + str(round(r2_lin, 4)), fontsize=10, c="tab:red"
         )
 
         # ax.indicate_inset_zoom(axins, edgecolor="black")
 
         ax.set_xlabel("Bytecode size (byte)")
         ax.set_ylabel("Compilation time (ms)")
-        ax.legend(["threaded code", "tracing JIT"], loc="upper right")
+        ax.legend(["threaded code", "tracing JIT"], loc="upper left")
+        # ax.set_ylim(-100, 2300)
 
         self._savefig("relation_compsize_bytecode.pdf")
         plt.show()
@@ -201,4 +201,4 @@ if __name__ == "__main__":
     args = parser.parse_args()
     path = args.dirname
     pysomplot_pypylog = PySOMPlotPyPyLog(path, args.standardize)
-    pysomplot_pypylog.plot()
+    pysomplot_pypylog.plot_bytecode_comptime()
