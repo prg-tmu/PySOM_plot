@@ -833,6 +833,7 @@ class PySOMPlotExperiment:
         df = pd.DataFrame(data)
         df_err = pd.DataFrame(err)
         del df["RPySOM-bc-interp"], df_err["RPySOM-bc-interp"]
+        print(df)
 
         labs = ["multitier", "threaded code gen.", "tracing"]
         ax = df.plot.bar(
@@ -846,6 +847,7 @@ class PySOMPlotExperiment:
             figsize=(4,6),
         )
         ax.set_xticklabels(naming.values(), rotation=45)
+        plt.ylabel("norm. to interp.'s median")
         plt.legend(labs, loc='lower right')
         plt.tight_layout()
         plt.savefig("output/experiment_bar.pdf")
