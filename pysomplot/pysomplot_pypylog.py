@@ -94,7 +94,10 @@ class PySOMPlotPyPyLog(Base):
 
         x = df["size"]
         y_threaded = df["threaded"]
+        print("Compilation time of threaded code:\n", y_threaded)
+
         y_tracing = df["tracing"]
+        print("Compilation time of tracing JIT:\n", y_tracing)
         yerr_threaded = df_var["threaded"]
         yerr_tracing = df_var["tracing"]
 
